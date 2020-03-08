@@ -1,51 +1,50 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gocolly/colly"
 )
 
-func main() {
-	PaginationCrawler := colly.NewCollector()
-	PeopleCrawler := colly.NewCollector(
+type PersonName struct {
+	Ko    string `JSON:"ko"`
+	HanJa string `JSON:"hanJa"`
+}
+
+type SangIm struct {
+	Link string `JSON:"link"`
+	Text string `JSON:"text"`
+}
+
+type Person struct {
+	ID       string     `JSON:"id"`
+	Name     PersonName `JSON:"name"`
+	Party    string     `JSON:"party"`
+	Precinct string     `JSON:"precinct"`
+	SangIm   SangIm     `JSON:"sangIm"`
+}
+
+var DefaultCrawler *colly.Collector
+var People map[string]*Person
+
+func init() {
+	DefaultCrawler = colly.NewCollector(
 		colly.Async(true),
 	)
-	PeopleCrawler.Limit(&colly.LimitRule{
+
+	DefaultCrawler.Limit(&colly.LimitRule{
 		Parallelism: 2,
 		RandomDelay: 5 * time.Second,
 	})
+}
 
-	PersonCrawler := PeopleCrawler.Clone()
-
-	// Fetch Pages
-	PaginationCrawler.OnHTML("ul.pagination", func(e *colly.HTMLElement) {
-		// pages := e.DOM.Children().Length()
-
-		for i := 0; i < 1; i++ {
-			fmt.Println(i)
-			PeopleCrawler.Visit(fmt.Sprintf("http://watch.peoplepower21.org/?act=&mid=AssemblyMembers&vid=&mode=search&page=%d", (i + 1)))
-		}
-	})
-
-	// Fetch List of People
-	PeopleCrawler.OnRequest(func(r *colly.Request) {
-		fmt.Println("On Request")
-	})
-
-	PeopleCrawler.OnHTML(".col-md-8 > .col-xs-6 a[href]", func(e *colly.HTMLElement) {
-		PersonCrawler.Visit(fmt.Sprintf("http://watch.peoplepower21.org%s", e.Attr("href")))
-	})
-
-	// Fetch Every Person
-	PersonCrawler.OnHTML(".panel-default > .panel-body > h1", func(e *colly.HTMLElement) {
-		// names := strings.Split(strings.TrimSpace(e.Text), "  ")
-		// ko := names[0]
-		// hanja := names[1]
-	})
-
+func main() {
 	PaginationCrawler.Visit("http://watch.peoplepower21.org/?act=&mid=AssemblyMembers&vid=&mode=search")
+	PaginationCrawler.Wait()
 	PeopleCrawler.Wait()
 	PersonCrawler.Wait()
+
+	// for v := range People {
+	// 	fmt.Println(People[v])
+	// }
 }
